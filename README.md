@@ -198,8 +198,8 @@ Tashkent_House_Price_Prediction/
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/Tashkent_House_Price_Prediction.git
-cd Tashkent_House_Price_Prediction
+git clone https://github.com/BehruzMaxmudov1203/Tashkent-Real-Estate-Price-Predictor.git
+cd Tashkent-Real-Estate-Price-Predictor
 ```
 
 ### 2. Create and Activate a Virtual Environment
