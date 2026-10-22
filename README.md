@@ -14,6 +14,7 @@
 - [Project Overview](#-project-overview)
 - [Methodology (CRISP-DM)](#-methodology-crisp-dm)
 - [Dataset Architecture](#-dataset-architecture)
+- [Exploratory Data Analysis (EDA)](#-exploratory-data-analysis-eda)
 - [Data Preprocessing Pipeline](#-data-preprocessing-pipeline)
 - [Models & Experiments](#-models--experiments)
 - [Evaluation & Benchmark Comparison](#-evaluation--benchmark-comparison)
@@ -39,7 +40,7 @@ This repository provides an automated data pipeline, exploratory analysis, and m
 - **Comprehensive Data Pipeline:** Automated cleaning of non-standard records, missing values handling, and 1%–99% price quantile anomaly filtering.
 - **High-Dimensional Categorical Encoding:** One-Hot Encoding across Tashkent's districts and micro-districts.
 - **Benchmarked Regressors:** Comparison across Linear Regression, Random Forest, and Gradient Boosting.
-- **Production-Ready Structure:** Clean separation of modular code (`src/`), notebooks, datasets, and pretrained model serialization.
+- **Production-Ready Structure:** Clean separation of modular code (`src/`), notebooks, visual assets (`assets/images/`), datasets, and pretrained model serialization.
 
 ---
 
@@ -79,21 +80,37 @@ The dataset includes listings across various districts of Tashkent:
 | `max_levels`| `integer` | Total floors in the residential building |
 | `price` | `float` | **Target Variable:** Listing price in USD ($) |
 
-The dataset is located under [`data/housing_data_08-02-2021.csv`](data/housing_data_08-02-2021.csv).
+The raw dataset is stored in [`data/housing_data_08-02-2021.csv`](data/housing_data_08-02-2021.csv).
+
+---
+
+## 🔍 Exploratory Data Analysis (EDA)
+
+Understanding the raw distribution of real estate prices and room dynamics in Tashkent is essential prior to model training:
+
+### 1. Price Distribution & Right-Skewness
+The apartment prices exhibit a notable right-skewed distribution, with the majority clustered around $30,000–$80,000 USD, alongside a long tail of luxury properties exceeding $250,000 USD.
+
+![Distribution of House Prices](assets/images/price_distribution.png)
+
+### 2. Price Distribution by Number of Rooms
+A clear positive trend exists between the number of rooms and price, though multi-room apartments display higher variance due to location premiums (e.g., city center vs. peripheral suburbs).
+
+![House Price by Number of Rooms](assets/images/price_by_rooms.png)
 
 ---
 
 ## 🧹 Data Preprocessing Pipeline
 
 1. **Data Sanitization:**
-   - Columns `size` and `price` contained non-numeric entries (e.g., *"Договорная"* / Negotiable). These were coerced to `NaN`.
-   - Missing `size` entries were imputed using the feature column mean.
-   - Rows without a valid `price` were removed.
+   - Columns `size` and `price` contained non-numeric entries (e.g., *"Договорная"* / Negotiable). These were coerced to numeric `NaN`.
+   - Missing `size` entries were imputed using the column mean.
+   - Rows without a valid `price` were dropped.
 2. **Outlier Mitigation:**
-   - Extreme price anomalies were filtered using the 1st percentile ($Q_{0.01}$) and 99th percentile ($Q_{0.99}$) thresholds to ensure stability:
+   - Extreme price anomalies were filtered using the 1st percentile ($Q_{0.01}$) and 99th percentile ($Q_{0.99}$) thresholds:
    $$\text{Filtered Data} = \{ x \mid Q_{0.01} \le \text{price}(x) \le Q_{0.99} \}$$
 3. **Encoding & Dimensionality Expansion:**
-   - `location` and `district` columns were converted into binary columns via **One-Hot Encoding** (`drop_first=True`), preventing artificial ordinal bias and capturing geographic micro-premiums.
+   - `location` and `district` columns were converted into binary features via **One-Hot Encoding** (`drop_first=True`), preventing artificial ordinal bias and capturing geographic micro-premiums.
 4. **Train / Test Partitioning:**
    - 80% Training Set (`5,857` samples)
    - 20% Holdout Testing Set (`1,465` samples)
@@ -102,7 +119,7 @@ The dataset is located under [`data/housing_data_08-02-2021.csv`](data/housing_d
 
 ## 🤖 Models & Experiments
 
-Three distinct regression algorithms were implemented and tested:
+Three distinct regression algorithms were implemented and evaluated:
 
 1. **Ordinary Least Squares (Linear Regression):** Serves as an interpretable linear baseline.
 2. **Random Forest Regressor:** An ensemble bagging method utilizing 100 decision trees to capture non-linear feature interactions and resist overfitting.
@@ -117,6 +134,9 @@ The models were evaluated on the independent test dataset using:
 - **Root Mean Squared Error (RMSE):** Penalizes larger deviation outliers.
 - **Coefficient of Determination ($R^2$):** Proportion of variance explained by the model.
 
+### 📊 Benchmark Visual Comparison
+![Model Benchmark Evaluation](assets/images/model_comparison.png)
+
 ### 🏆 Benchmark Summary Table
 
 | Model | MAE (USD) | RMSE (USD) | $R^2$ Score | Performance Rank |
@@ -125,16 +145,19 @@ The models were evaluated on the independent test dataset using:
 | **Gradient Boosting Regressor** | $10,924.41 | $17,388.99 | 0.7405 (74.05%) | 🥈 Runner Up |
 | **Linear Regression** | $14,272.59 | $22,910.68 | 0.5495 (54.95%) | 🥉 Baseline |
 
-> **Conclusion:** **Random Forest** achieved the highest accuracy with an **$R^2$ score of ~79.1%** and the lowest Mean Absolute Error (**~$8,284 USD**), making it the primary choice for production deployment.
+> **Conclusion:** **Random Forest** achieved the highest accuracy with an **$R^2$ score of ~79.1%** and the lowest Mean Absolute Error (**~$8,284 USD**), explaining almost 80% of total price variation on unseen data.
 
 ---
 
-## 💡 Key Insights & Feature Importance
+## 🎯 Key Insights & Feature Importance
 
-Based on feature importance extraction from the tree-based ensembles:
-1. **Apartment Size ($m^2$):** The single strongest predictor of apartment value in Tashkent.
+Feature importance scores from the tree-based models highlight the primary drivers of apartment values in Tashkent:
+
+![Top 10 Feature Importances](assets/images/feature_importance.png)
+
+1. **Apartment Size ($m^2$):** The single most dominant factor determining property valuation.
 2. **District Location:** High-demand central areas (such as *Yakkasaray*, *Mirzo-Ulugbek*, and *Shaykhantakhur*) command significantly higher square-meter premiums compared to peripheral suburbs.
-3. **Room Count & Floor Layout:** Higher room count positively influences value, while intermediate floors (neither ground floor nor top floor in non-elevator buildings) exhibit price premiums.
+3. **Floor Dynamics:** Mid-level floors (floors 2–5 in mid-rise blocks) typically command price premiums over ground and top floors.
 
 ---
 
@@ -142,6 +165,12 @@ Based on feature importance extraction from the tree-based ensembles:
 
 ```text
 Tashkent_House_Price_Prediction/
+├── assets/
+│   └── images/                             # Evaluation plots & visualizations
+│       ├── model_comparison.png            # Model benchmark comparison plot
+│       ├── feature_importance.png          # Top 10 feature importances plot
+│       ├── price_distribution.png          # Histogram & KDE of house prices
+│       └── price_by_rooms.png              # Boxplot of prices grouped by rooms
 ├── data/
 │   ├── README.md                           # Dataset documentation
 │   └── housing_data_08-02-2021.csv         # Raw real estate dataset
